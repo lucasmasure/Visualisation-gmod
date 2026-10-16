@@ -1,0 +1,12 @@
+# Réglages locaux de Claude Code
+.claude/settings.local.json
+
+# Anciens dossiers de données (les addons ne sont plus stockés dans le site)
+cache/
+tools/
+
+# Fichiers système
+Thumbs.db
+desktop.ini
+.DS_Store
+*.log
