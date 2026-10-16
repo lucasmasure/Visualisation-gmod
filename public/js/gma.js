@@ -53,9 +53,50 @@ export function parseGma(u8) {
     author,
     files,
     has: (path) => files.has(normPath(path)),
+    fetch: async () => {}, // tout est déjà en mémoire
     get(path) {
       const f = files.get(normPath(path));
       return f ? u8.subarray(f.offset, f.offset + f.size) : null;
     },
   };
+}
+
+/**
+ * Addon resté sur le serveur en ligne : seuls les fichiers demandés sont téléchargés.
+ * Même interface que parseGma (files, has, get) avec fetch(paths) à appeler avant get().
+ */
+export class RemoteGma {
+  constructor(base, id, list, name) {
+    this.base = base;
+    this.id = id;
+    this.name = name || '';
+    this.files = new Map(list.map(([p, size]) => [normPath(p), { name: p, size }]));
+    this.cache = new Map();
+    this.pending = new Map();
+  }
+
+  has(path) { return this.files.has(normPath(path)); }
+
+  get(path) { return this.cache.get(normPath(path)) || null; }
+
+  async fetch(paths, onProgress) {
+    const need = [...new Set(paths.map(normPath))].filter((p) => this.files.has(p) && !this.cache.has(p));
+    let done = 0;
+    const one = (p) => {
+      if (!this.pending.has(p)) {
+        const url = `${this.base}/api/file?id=${this.id}&path=${encodeURIComponent(p)}`;
+        this.pending.set(p, fetch(url).then(async (r) => {
+          if (!r.ok) throw new Error(r.status === 404 ? 'expired' : `HTTP ${r.status}`);
+          this.cache.set(p, new Uint8Array(await r.arrayBuffer()));
+        }).finally(() => this.pending.delete(p)));
+      }
+      return this.pending.get(p).then(() => onProgress?.(++done, need.length));
+    };
+    // 6 téléchargements en parallèle
+    const queue = [...need];
+    const workers = Array.from({ length: Math.min(6, queue.length) }, async () => {
+      while (queue.length) await one(queue.shift());
+    });
+    await Promise.all(workers);
+  }
 }

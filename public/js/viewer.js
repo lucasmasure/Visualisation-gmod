@@ -6,6 +6,7 @@ import { parseVtf } from './vtf.js';
 import { normPath } from './gma.js';
 
 const latin1 = new TextDecoder('latin1');
+const vtfPath = (name) => normPath(`materials/${name.replace(/\.vtf$/i, '')}.vtf`);
 
 export class Viewer {
   constructor(container) {
@@ -212,9 +213,23 @@ export class MaterialLibrary {
     return vmt;
   }
 
+  // Fichiers dont dépend un matériau : VMT inclus (shader "patch") et textures
+  materialFiles(vmtPath) {
+    const text = this.readText(vmtPath);
+    const vmt = text && parseVmt(text);
+    if (!vmt) return { vmts: [], vtfs: [] };
+    const p = vmt.params;
+    const all = [p, p.insert || {}, p.replace || {}];
+    const textures = all.flatMap((x) => [x.$basetexture, x.$iris]).filter((t) => typeof t === 'string');
+    return {
+      vmts: vmt.shader === 'patch' && p.include ? [normPath(p.include)] : [],
+      vtfs: textures.map(vtfPath),
+    };
+  }
+
   texture(name) {
     if (!name) return null;
-    const path = normPath(`materials/${name.replace(/\.vtf$/i, '')}.vtf`);
+    const path = vtfPath(name);
     if (this.textures.has(path)) return this.textures.get(path);
     let tex = null;
     const bytes = this.gma.get(path);

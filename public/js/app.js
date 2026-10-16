@@ -1,7 +1,8 @@
 import { Viewer, MaterialLibrary } from './viewer.js';
-import { parseGma, isGma, normPath } from './gma.js';
+import { parseGma, isGma, normPath, RemoteGma } from './gma.js';
 import { lzmaDecompress, isLzma } from './lzma.js';
 import { loadModel } from './mdl.js';
+import { CLOUD_API } from './config.js';
 
 const $ = (id) => document.getElementById(id);
 const form = $('addon-form');
@@ -23,6 +24,8 @@ const ERRORS = {
   bad_url: "Lien invalide. Collez un lien du type https://steamcommunity.com/sharedfiles/filedetails/?id=123456789",
   not_found: "Addon introuvable sur le Workshop (lien incorrect, addon privé ou supprimé).",
   not_gmod: "Cet élément du Workshop n'est pas un addon Garry's Mod.",
+  too_big: "Cet addon est trop gros pour le serveur en ligne.",
+  not_ready: "L'addon n'est plus disponible sur le serveur, relancez « Voir les models ».",
   server: "Erreur du serveur",
 };
 
@@ -51,37 +54,68 @@ function setError(text) {
 }
 function hideStatus() { $('status').classList.add('hidden'); }
 
-// ---------------------------------------------------------------- addon
+// ---------------------------------------------------------------- serveur
 
 const NO_SERVER = "Le serveur ne répond pas. Double-cliquez sur start.bat dans le dossier du site, puis rechargez la page.";
+const NO_CLOUD = "Le serveur en ligne ne répond pas. Réessayez dans une minute.\n\n"
+  + "En attendant, vous pouvez ouvrir le fichier .gma de l'addon avec le bouton « Ouvrir un fichier .gma ».";
 
-// Le serveur (start.bat) est-il là ? Sinon (ex. GitHub Pages) seuls les fichiers .gma sont possibles.
 const isLocalHost = ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname);
-const serverAvailable = fetch('/api/status?id=0', { cache: 'no-store' })
-  .then((r) => r.json())
-  .then((d) => !!(d && d.status))
-  .catch(() => false);
+
+async function probe(base, timeoutMs = 4000) {
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), timeoutMs);
+  try {
+    const r = await fetch(base + '/api/status?id=0', { cache: 'no-store', signal: ctl.signal });
+    const d = await r.json();
+    return !!(d && d.status);
+  } catch {
+    return false;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// Qui télécharge les addons ?
+//  - local : start.bat (même adresse), l'addon entier est envoyé au navigateur
+//  - cloud : serveur en ligne (config.js), seuls les fichiers du model affiché sont envoyés
+//  - none  : aucun serveur, seul l'ouverture d'un fichier .gma est possible
+const backend = (async () => {
+  if (location.protocol.startsWith('http') && await probe('')) return { kind: 'local', base: '' };
+  if (CLOUD_API) return { kind: 'cloud', base: CLOUD_API.replace(/\/+$/, '') };
+  return { kind: 'none', base: '' };
+})();
 
 const workshopIdOf = (text) => (text.match(/[?&]id=(\d+)/) || text.trim().match(/^(\d+)$/) || [])[1];
 
 function staticModeMessage(url) {
   const id = workshopIdOf(url) || '<id>';
-  return "La version en ligne ne peut pas télécharger les addons du Workshop (Steam bloque les navigateurs).\n\n"
+  return "Aucun serveur de téléchargement n'est configuré pour cette version du site.\n\n"
     + "Cliquez sur « Ouvrir un fichier .gma » et choisissez le fichier de l'addon. Après vous y être abonné dans Garry's Mod, il se trouve dans :\n"
-    + `Steam\\steamapps\\workshop\\content\\4000\\${id}\\\n\n`
-    + "Pour coller directement un lien, utilisez la version à télécharger (start.bat).";
+    + `Steam\\steamapps\\workshop\\content\\4000\\${id}\\`;
 }
 
-async function api(url) {
-  let r;
-  try { r = await fetch(url); } catch { throw new Error(NO_SERVER); }
-  let data;
-  try { data = await r.json(); } catch { throw new Error('Réponse invalide du serveur'); }
+async function api(be, path) {
+  let r, data;
+  try { r = await fetch(be.base + path, { cache: 'no-store' }); } catch { throw new Error(be.kind === 'cloud' ? NO_CLOUD : NO_SERVER); }
+  try { data = await r.json(); } catch { throw new Error(be.kind === 'cloud' ? NO_CLOUD : 'Réponse invalide du serveur'); }
   if (data.error) {
     const msg = ERRORS[data.error] || data.error;
     throw new Error(data.message ? `${msg} : ${data.message}` : msg);
   }
   return data;
+}
+
+// Le serveur gratuit s'endort quand personne ne l'utilise : on attend qu'il redémarre
+async function wakeCloud(be, alive) {
+  const start = Date.now();
+  while (!(await probe(be.base, 8000))) {
+    if (!alive()) return;
+    const s = Math.round((Date.now() - start) / 1000);
+    if (s > 150) throw new Error(NO_CLOUD);
+    setStatus(`Démarrage du serveur en ligne… ${s} s (jusqu'à 2 min s'il était en veille)`);
+    await sleep(3000);
+  }
 }
 
 async function loadAddon(url) {
@@ -94,10 +128,13 @@ async function loadAddon(url) {
     $('addon-info').classList.add('hidden');
     setStatus("Recherche de l'addon sur le Workshop…");
 
-    if (!(await serverAvailable)) throw new Error(isLocalHost ? NO_SERVER : staticModeMessage(url));
+    const be = await backend;
+    if (be.kind === 'none') throw new Error(isLocalHost ? NO_SERVER : staticModeMessage(url));
+    if (be.kind === 'cloud') await wakeCloud(be, alive);
     if (!alive()) return;
+    setStatus("Recherche de l'addon sur le Workshop…");
 
-    const info = await api('/api/addon?url=' + encodeURIComponent(url));
+    const info = await api(be, '/api/addon?url=' + encodeURIComponent(url));
     if (!alive()) return;
 
     if (info.collection) {
@@ -113,8 +150,12 @@ async function loadAddon(url) {
     while (st.status !== 'ready') {
       if (st.status === 'error') throw new Error('Échec du téléchargement.\n' + (st.error || ''));
       if (st.status === 'unknown') throw new Error('Téléchargement interrompu, réessayez.');
-      if (st.method === 'http' && st.size) {
-        setStatus(`Téléchargement de l'addon… ${mb(st.done || 0)} / ${mb(st.size)}`, (st.done || 0) / st.size);
+      const where = be.kind === 'cloud' ? ' sur le serveur' : '';
+      if (st.queued) {
+        setStatus(`En attente : un autre addon est en cours de téléchargement… ${st.elapsed || 0} s`);
+      } else if (st.size && (st.method === 'http' || be.kind === 'cloud')) {
+        const done = Math.min(st.done || 0, st.size);
+        setStatus(`Téléchargement de l'addon${where}… ${mb(done)} / ${mb(st.size)}`, done / st.size);
       } else if (st.method === 'steamcmd' && !st.steamcmdReady) {
         setStatus(`Installation de SteamCMD (première utilisation, ~1 à 2 min)… ${st.elapsed || 0} s`);
       } else if (st.method === 'steamcmd') {
@@ -125,7 +166,19 @@ async function loadAddon(url) {
       }
       await sleep(1000);
       if (!alive()) return;
-      st = await api('/api/status?id=' + info.id);
+      st = await api(be, '/api/status?id=' + info.id);
+    }
+
+    if (be.kind === 'cloud') {
+      // l'addon reste sur le serveur : on récupère seulement la liste de ses fichiers
+      if (!st.files) st = await api(be, '/api/status?id=' + info.id);
+      if (st.status !== 'ready') throw new Error(ERRORS.not_ready);
+      const gma = new RemoteGma(be.base, info.id, st.files, st.name);
+      current = { id: info.id, gma, materials: new MaterialLibrary(gma) };
+      $('addon-meta').textContent = `${gma.files.size} fichiers · ${mb(info.size)}`;
+      hideStatus();
+      listModels();
+      return;
     }
 
     // récupération du fichier
@@ -258,14 +311,47 @@ function resetModelUi() {
   missingSection.classList.add('hidden');
 }
 
-function selectModel(path, button) {
+let selectToken = 0;
+
+// Télécharge (si l'addon est sur le serveur en ligne) les fichiers d'un model :
+// géométrie, puis matériaux, puis textures et matériaux inclus
+async function fetchModelFiles(gma, materials, path, vtxPath, onProgress) {
+  const base = path.replace(/\.mdl$/, '');
+  await gma.fetch([path, base + '.vvd', vtxPath], onProgress);
+  const model = loadModel(gma.get(path), gma.get(base + '.vvd'), gma.get(vtxPath));
+  let vmts = model.textures.map((t) => materials.findVmt(model, t)).filter(Boolean);
+  const seen = new Set();
+  for (let depth = 0; depth < 4 && vmts.length; depth++) {
+    await gma.fetch(vmts, onProgress);
+    vmts.forEach((v) => seen.add(v));
+    const deps = vmts.map((v) => materials.materialFiles(v));
+    await gma.fetch(deps.flatMap((d) => d.vtfs), onProgress);
+    vmts = deps.flatMap((d) => d.vmts).filter((v) => !seen.has(v));
+  }
+  return model;
+}
+
+async function selectModel(path, button) {
   for (const b of modelsList.querySelectorAll('.model-btn')) b.classList.toggle('active', b === button);
   const { gma, materials } = current;
+  const token = ++selectToken;
   const base = path.replace(/\.mdl$/, '');
   try {
     const vtxPath = ['.dx90.vtx', '.vtx', '.dx80.vtx', '.sw.vtx'].map((e) => base + e).find((p) => gma.has(p));
     if (!vtxPath) throw new Error('Fichier .vtx manquant pour ce model');
-    const model = loadModel(gma.get(path), gma.get(base + '.vvd'), gma.get(vtxPath));
+    const name = path.split('/').pop();
+    const remote = gma instanceof RemoteGma;
+    if (remote) setStatus(`Chargement de ${name}…`);
+    let model;
+    try {
+      model = await fetchModelFiles(gma, materials, path, vtxPath, (done, total) => {
+        if (token === selectToken) setStatus(`Chargement de ${name}… ${done} / ${total} fichiers`, done / total);
+      });
+    } catch (e) {
+      if (e.message === 'expired') throw new Error(ERRORS.not_ready);
+      throw remote ? new Error(NO_CLOUD) : e;
+    }
+    if (token !== selectToken) return;
     const ctl = viewer.show(model, materials);
     stageTitle.textContent = path.split('/').pop();
     buildBodygroups(model, ctl);
@@ -274,6 +360,7 @@ function selectModel(path, button) {
     hideStatus();
   } catch (e) {
     console.error(e);
+    if (token !== selectToken) return;
     resetModelUi();
     setError(`Impossible d'afficher ce model : ${e.message}`);
   }
@@ -377,9 +464,9 @@ window.addEventListener('drop', (e) => {
   if (file) loadFile(file);
 });
 
-// version en ligne : on l'indique tout de suite
-serverAvailable.then((ok) => {
-  if (ok || isLocalHost) return;
+// sans serveur du tout : on indique tout de suite d'ouvrir un fichier .gma
+backend.then((be) => {
+  if (be.kind !== 'none' || isLocalHost) return;
   document.body.classList.add('static-mode');
   if (!new URLSearchParams(location.search).get('addon')) {
     modelsList.innerHTML = '';
