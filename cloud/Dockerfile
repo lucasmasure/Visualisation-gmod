@@ -1,4 +1,4 @@
-# Visualisation Skin Gmod - serveur en ligne (Hugging Face Spaces, SDK Docker)
+# Visualisation Skin Gmod - serveur en ligne (Render ou tout hébergeur Docker)
 FROM python:3.12-slim
 
 # SteamCMD est un programme 32 bits
@@ -6,7 +6,7 @@ RUN apt-get update \
  && apt-get install -y --no-install-recommends lib32gcc-s1 lib32stdc++6 ca-certificates curl \
  && rm -rf /var/lib/apt/lists/*
 
-# Hugging Face lance le conteneur avec l'utilisateur 1000
+# utilisateur sans droits administrateur
 RUN useradd -m -u 1000 user
 WORKDIR /app
 RUN mkdir -p /app/steamcmd /data && chown -R user:user /app /data

@@ -1,5 +1,5 @@
 """
-Visualisation Skin Gmod - serveur en ligne (Hugging Face Spaces, Docker)
+Visualisation Skin Gmod - serveur en ligne (Render, Docker)
 
 Télécharge les addons du Workshop avec SteamCMD et les sert fichier par fichier
 au site (GitHub Pages), pour que le navigateur ne charge que le model affiché.

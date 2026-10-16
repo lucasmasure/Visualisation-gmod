@@ -112,8 +112,8 @@ async function wakeCloud(be, alive) {
   while (!(await probe(be.base, 8000))) {
     if (!alive()) return;
     const s = Math.round((Date.now() - start) / 1000);
-    if (s > 150) throw new Error(NO_CLOUD);
-    setStatus(`Démarrage du serveur en ligne… ${s} s (jusqu'à 2 min s'il était en veille)`);
+    if (s > 240) throw new Error(NO_CLOUD);
+    setStatus(`Démarrage du serveur en ligne… ${s} s (jusqu'à 1 à 2 min s'il était en veille)`);
     await sleep(3000);
   }
 }

@@ -1,0 +1,18 @@
+# Serveur en ligne de Visualisation Skin Gmod, hébergé gratuitement sur Render.
+# Créé avec le bouton « Deploy to Render » (voir README).
+services:
+  - type: web
+    name: visualisation-gmod
+    runtime: docker
+    plan: free
+    dockerfilePath: ./cloud/Dockerfile
+    dockerContext: ./cloud
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: ALLOWED_ORIGINS
+        value: https://lucasmasure.github.io,http://localhost:8080
+      - key: MAX_IDLE_MIN
+        value: "30"
+      - key: MAX_DISK_GB
+        value: "3"
