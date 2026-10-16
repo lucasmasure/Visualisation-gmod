@@ -15,7 +15,8 @@ const missingSection = $('missing-section');
 const missingEl = $('missing');
 const stageTitle = $('stage-title');
 
-const viewer = new Viewer($('viewport'));let current = null; // { gma, materials, id }
+const viewer = new Viewer($('viewport'));
+let current = null; // { gma, materials, id }
 let loadToken = 0;
 
 const ERRORS = {
@@ -54,6 +55,23 @@ function hideStatus() { $('status').classList.add('hidden'); }
 
 const NO_SERVER = "Le serveur ne répond pas. Double-cliquez sur start.bat dans le dossier du site, puis rechargez la page.";
 
+// Le serveur (start.bat) est-il là ? Sinon (ex. GitHub Pages) seuls les fichiers .gma sont possibles.
+const isLocalHost = ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname);
+const serverAvailable = fetch('/api/status?id=0', { cache: 'no-store' })
+  .then((r) => r.json())
+  .then((d) => !!(d && d.status))
+  .catch(() => false);
+
+const workshopIdOf = (text) => (text.match(/[?&]id=(\d+)/) || text.trim().match(/^(\d+)$/) || [])[1];
+
+function staticModeMessage(url) {
+  const id = workshopIdOf(url) || '<id>';
+  return "La version en ligne ne peut pas télécharger les addons du Workshop (Steam bloque les navigateurs).\n\n"
+    + "Cliquez sur « Ouvrir un fichier .gma » et choisissez le fichier de l'addon. Après vous y être abonné dans Garry's Mod, il se trouve dans :\n"
+    + `Steam\\steamapps\\workshop\\content\\4000\\${id}\\\n\n`
+    + "Pour coller directement un lien, utilisez la version à télécharger (start.bat).";
+}
+
 async function api(url) {
   let r;
   try { r = await fetch(url); } catch { throw new Error(NO_SERVER); }
@@ -75,6 +93,9 @@ async function loadAddon(url) {
     modelsList.innerHTML = '';
     $('addon-info').classList.add('hidden');
     setStatus("Recherche de l'addon sur le Workshop…");
+
+    if (!(await serverAvailable)) throw new Error(isLocalHost ? NO_SERVER : staticModeMessage(url));
+    if (!alive()) return;
 
     const info = await api('/api/addon?url=' + encodeURIComponent(url));
     if (!alive()) return;
@@ -113,22 +134,46 @@ async function loadAddon(url) {
     });
     if (!alive()) return;
 
-    if (!isGma(bytes)) {
-      if (!isLzma(bytes)) throw new Error("Format de fichier d'addon inconnu");
-      setStatus('Décompression de l\'addon…');
-      await sleep(30);
-      bytes = lzmaDecompress(bytes);
-    }
-    const gma = parseGma(bytes);
-    current = { id: info.id, gma, materials: new MaterialLibrary(gma) };
-    $('addon-meta').textContent = `${gma.files.size} fichiers · ${mb(bytes.length)}`;
-    hideStatus();
-    listModels();
+    await openAddonBytes(bytes, info.id);
   } catch (e) {
     console.error(e);
     if (alive()) setError(e.message || String(e));
   } finally {
     if (alive()) viewBtn.disabled = false;
+  }
+}
+
+// Décompresse si besoin (anciens addons), lit l'archive et affiche la liste des models
+async function openAddonBytes(bytes, id) {
+  if (!isGma(bytes)) {
+    if (!isLzma(bytes)) throw new Error("Ce fichier n'est pas un addon Garry's Mod (.gma).");
+    setStatus("Décompression de l'addon…");
+    await sleep(30);
+    bytes = lzmaDecompress(bytes);
+  }
+  const gma = parseGma(bytes);
+  current = { id, gma, materials: new MaterialLibrary(gma) };
+  $('addon-meta').textContent = `${gma.files.size} fichiers · ${mb(bytes.length)}`;
+  hideStatus();
+  listModels();
+}
+
+// Ouverture d'un fichier .gma (ou .bin) choisi par l'utilisateur : tout reste dans le navigateur
+async function loadFile(file) {
+  const token = ++loadToken;
+  try {
+    resetModelUi();
+    modelsList.innerHTML = '';
+    setStatus(`Lecture de ${file.name}…`);
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    if (token !== loadToken) return;
+    showAddonInfo({ title: file.name.replace(/\.(gma|bin)$/i, ''), size: file.size });
+    await openAddonBytes(bytes, null);
+    const gmaName = current.gma.name;
+    if (gmaName) $('addon-title').textContent = gmaName;
+  } catch (e) {
+    console.error(e);
+    if (token === loadToken) setError(e.message || String(e));
   }
 }
 
@@ -304,6 +349,42 @@ form.addEventListener('submit', (e) => {
   if (!url) return;
   history.replaceState(null, '', '?addon=' + encodeURIComponent(url));
   loadAddon(url);
+});
+
+// fichier .gma : bouton ou glisser-déposer sur la page
+const fileInput = $('gma-file');
+fileInput.addEventListener('change', () => {
+  if (fileInput.files[0]) loadFile(fileInput.files[0]);
+  fileInput.value = '';
+});
+let dragDepth = 0;
+const hasFiles = (e) => [...(e.dataTransfer?.types || [])].includes('Files');
+window.addEventListener('dragenter', (e) => {
+  if (!hasFiles(e)) return;
+  dragDepth++;
+  document.body.classList.add('dragging');
+});
+window.addEventListener('dragleave', () => {
+  if (--dragDepth <= 0) { dragDepth = 0; document.body.classList.remove('dragging'); }
+});
+window.addEventListener('dragover', (e) => { if (hasFiles(e)) e.preventDefault(); });
+window.addEventListener('drop', (e) => {
+  if (!hasFiles(e)) return;
+  e.preventDefault();
+  dragDepth = 0;
+  document.body.classList.remove('dragging');
+  const file = e.dataTransfer.files[0];
+  if (file) loadFile(file);
+});
+
+// version en ligne : on l'indique tout de suite
+serverAvailable.then((ok) => {
+  if (ok || isLocalHost) return;
+  document.body.classList.add('static-mode');
+  if (!new URLSearchParams(location.search).get('addon')) {
+    modelsList.innerHTML = '';
+    modelsList.append(el('p', 'muted', "Version en ligne : ouvrez le fichier .gma d'un addon avec le bouton « Ouvrir un fichier .gma », ou glissez-le sur la page."));
+  }
 });
 
 // les flèches servent à déplacer la vue, sauf pendant la saisie du lien

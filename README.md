@@ -16,6 +16,15 @@ La première fois qu'un addon récent est demandé, SteamCMD (l'outil officiel d
 
 Pour changer de port : `start.bat -Port 9000`.
 
+## Version en ligne (GitHub Pages)
+
+Le site peut aussi être publié avec GitHub Pages (Settings → Pages → *Deploy from a branch* → `main` / `/ (root)`).
+Le fichier `index.html` à la racine redirige vers `public/`.
+
+GitHub Pages n'héberge que des fichiers : il ne peut pas faire tourner `server.ps1`, et Steam empêche un site web de télécharger les addons lui-même. Sur la version en ligne, **les liens du Workshop ne fonctionnent donc pas** ; on ouvre à la place le fichier `.gma` de l'addon (bouton « Ouvrir un fichier .gma » ou glisser-déposer).
+Après s'être abonné à l'addon dans Garry's Mod, ce fichier se trouve dans `Steam\steamapps\workshop\content\4000\<id de l'addon>\`.
+Le fichier est lu dans le navigateur et n'est envoyé nulle part.
+
 ## Utilisation
 
 1. Sur la page d'accueil, collez un lien du Workshop (ou juste l'ID), puis cliquez sur **Voir les models**.
@@ -40,6 +49,7 @@ Le décodage (models, textures) se fait entièrement en mémoire, dans le naviga
 ## Structure du projet
 
 ```
+index.html         redirige vers public/ (GitHub Pages)
 start.bat          lance le serveur
 server.ps1         serveur local (site + récupération des addons)
 public/
@@ -66,7 +76,7 @@ Laissez la fenêtre noire ouverte tant que vous utilisez le site.
 
 ## Limites
 
-- Le site a besoin du serveur local : il ne fonctionne pas sur GitHub Pages seul, car Steam ne laisse pas un navigateur télécharger les addons directement.
+- Coller un lien du Workshop nécessite la version locale (`start.bat`). La version en ligne ne lit que les fichiers `.gma`.
 - Les models s'affichent dans leur pose de base (souvent en T), sans animation.
 - Les textures absentes de l'addon (contenu du jeu ou d'un autre addon) s'affichent en gris et sont listées sous « Textures manquantes ».
 - La teinte « couleur du joueur » de GMod n'est pas appliquée.

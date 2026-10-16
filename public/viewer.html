@@ -16,25 +16,20 @@
   </script>
 </head>
 <body class="app">
-  <!-- Visible si le site n'est pas servi par start.bat (fichier ouvert directement ou serveur arrêté) -->
+  <!-- Visible quand la page est ouverte directement depuis le fichier (file:///…) -->
   <div id="server-warning" class="server-warning" role="alert">
     <div>
       <strong>Le site n'est pas lancé.</strong>
-      Cette page a été ouverte directement depuis le fichier, ou le serveur est arrêté : le bouton ne peut pas fonctionner.
+      Cette page a été ouverte directement depuis le fichier : elle ne peut pas fonctionner ainsi.
       Double-cliquez sur <code>start.bat</code> dans le dossier du site, puis utilisez la page qui s'ouvre.
     </div>
     <a class="primary" href="http://localhost:8080/">Ouvrir http://localhost:8080</a>
   </div>
   <script>
-    (function () {
-      var w = document.getElementById('server-warning');
-      var ok = function () { w.parentNode && w.parentNode.removeChild(w); };
-      if (location.protocol !== 'http:' && location.protocol !== 'https:') return;
-      fetch('/api/status?id=0', { cache: 'no-store' })
-        .then(function (r) { return r.json(); })
-        .then(function (d) { if (d && d.status) ok(); })
-        .catch(function () {});
-    })();
+    // servie en http(s) (start.bat ou GitHub Pages) : la page fonctionne, on retire l'avertissement
+    if (location.protocol === 'http:' || location.protocol === 'https:') {
+      document.getElementById('server-warning').remove();
+    }
   </script>
   <header class="top">
     <a class="brand" href="index.html" title="Retour à l'accueil">
@@ -48,6 +43,10 @@
       <input id="addon-url" type="text" placeholder="Collez un lien du Workshop, ex. https://steamcommunity.com/sharedfiles/filedetails/?id=..." required>
       <button id="view-btn" class="primary" type="submit">Voir les models</button>
     </form>
+    <label class="file-btn" title="Ouvrir le fichier .gma d'un addon (ou le glisser sur la page)">
+      <input id="gma-file" type="file" accept=".gma,.bin">
+      <span>Ouvrir un fichier .gma</span>
+    </label>
   </header>
 
   <main class="layout">
@@ -61,7 +60,7 @@
       </div>
       <h2>Models</h2>
       <div id="models-list" class="btn-list">
-        <p class="muted">Collez un lien d'addon puis cliquez sur « Voir les models ».</p>
+        <p class="muted">Collez un lien d'addon puis cliquez sur « Voir les models », ou ouvrez un fichier .gma.</p>
       </div>
     </aside>
 
@@ -118,6 +117,8 @@
       </div>
     </aside>
   </main>
+
+  <div class="drop-overlay"><div>Déposez le fichier .gma de l'addon</div></div>
 
   <script type="module" src="js/app.js"></script>
 </body>

@@ -9,25 +9,20 @@
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body class="home">
-  <!-- Visible si le site n'est pas servi par start.bat (fichier ouvert directement ou serveur arrêté) -->
+  <!-- Visible quand la page est ouverte directement depuis le fichier (file:///…) -->
   <div id="server-warning" class="server-warning" role="alert">
     <div>
       <strong>Le site n'est pas lancé.</strong>
-      Cette page a été ouverte directement depuis le fichier, ou le serveur est arrêté : le bouton ne peut pas fonctionner.
+      Cette page a été ouverte directement depuis le fichier : elle ne peut pas fonctionner ainsi.
       Double-cliquez sur <code>start.bat</code> dans le dossier du site, puis utilisez la page qui s'ouvre.
     </div>
     <a class="primary" href="http://localhost:8080/">Ouvrir http://localhost:8080</a>
   </div>
   <script>
-    (function () {
-      var w = document.getElementById('server-warning');
-      var ok = function () { w.parentNode && w.parentNode.removeChild(w); };
-      if (location.protocol !== 'http:' && location.protocol !== 'https:') return;
-      fetch('/api/status?id=0', { cache: 'no-store' })
-        .then(function (r) { return r.json(); })
-        .then(function (d) { if (d && d.status) ok(); })
-        .catch(function () {});
-    })();
+    // servie en http(s) (start.bat ou GitHub Pages) : la page fonctionne, on retire l'avertissement
+    if (location.protocol === 'http:' || location.protocol === 'https:') {
+      document.getElementById('server-warning').remove();
+    }
   </script>
   <header class="nav">
     <a class="brand" href="index.html">
@@ -52,7 +47,13 @@
         <input id="home-url" type="text" placeholder="https://steamcommunity.com/sharedfiles/filedetails/?id=..." required>
         <button class="primary" type="submit">Voir les models</button>
       </form>
-      <p class="muted small">Un lien d'addon, un lien de collection ou simplement l'ID du Workshop.</p>
+      <p class="muted small">Un lien d'addon, un lien de collection ou simplement l'ID du Workshop.
+        Vous avez déjà le fichier ? <a href="viewer.html">Ouvrir un fichier .gma</a></p>
+      <div id="static-note" class="static-note hidden">
+        <strong>Version en ligne</strong> : Steam ne permet pas à un site web de télécharger les addons, donc les liens du Workshop ne fonctionnent pas ici.
+        Ouvrez plutôt le fichier <code>.gma</code> de l'addon dans la <a href="viewer.html">visionneuse</a>.
+        Pour coller directement un lien, téléchargez le projet et lancez <code>start.bat</code>.
+      </div>
     </section>
 
     <section id="fonctions" class="features">
@@ -102,6 +103,16 @@
       }
       if (url) location.href = 'viewer.html?addon=' + encodeURIComponent(url);
     });
+
+    // sans serveur (ex. GitHub Pages) : on explique tout de suite comment utiliser le site
+    var isLocal = ['localhost', '127.0.0.1', '[::1]'].indexOf(location.hostname) >= 0;
+    fetch('/api/status?id=0', { cache: 'no-store' })
+      .then(function (r) { return r.json(); })
+      .then(function (d) { return !!(d && d.status); })
+      .catch(function () { return false; })
+      .then(function (ok) {
+        if (!ok && !isLocal) document.getElementById('static-note').classList.remove('hidden');
+      });
   </script>
 </body>
 </html>

@@ -302,3 +302,34 @@ button:disabled { opacity: .5; cursor: default; }
 .server-warning.pulse { animation: warning-pulse .5s ease; }
 @keyframes warning-in { from { opacity: 0; } to { opacity: 1; } }
 @keyframes warning-pulse { 0%, 100% { transform: none; } 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
+
+/* ---------- fichier .gma (bouton, glisser-déposer, version en ligne) ---------- */
+.file-btn {
+  display: inline-flex; align-items: center; cursor: pointer;
+  border: 1px solid var(--border); border-radius: 8px; background: var(--panel-2);
+  padding: 10px 14px; white-space: nowrap;
+}
+.file-btn:hover { border-color: var(--accent); }
+.file-btn input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.file-btn:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+.static-mode .file-btn { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+
+.drop-overlay {
+  position: fixed; inset: 0; z-index: 50; display: none;
+  place-items: center; background: rgba(15,18,22,.85);
+  border: 3px dashed var(--accent); font-size: 20px; font-weight: 600; pointer-events: none;
+}
+.dragging .drop-overlay { display: grid; }
+
+.static-note {
+  max-width: 640px; margin: 18px auto 0; text-align: left;
+  background: rgba(26,159,255,.08); border: 1px solid rgba(26,159,255,.35);
+  border-radius: 10px; padding: 14px 16px; color: var(--muted);
+}
+.static-note strong { color: var(--text); }
+.static-note a, .hero a { color: var(--accent); }
+.static-note code { background: var(--panel-2); padding: 1px 6px; border-radius: 4px; color: var(--text); }
+
+@media (max-width: 900px) {
+  .file-btn { flex: 1 1 100%; justify-content: center; }
+}
