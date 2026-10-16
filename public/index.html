@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Visualisation Skin Gmod</title>
+  <meta name="description" content="Prévisualisez en 3D les models et playermodels des addons Garry's Mod du Workshop, avec textures, bodygroups et skins.">
+  <link rel="icon" href="img/logo.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="home">
+  <!-- Visible si le site n'est pas servi par start.bat (fichier ouvert directement ou serveur arrêté) -->
+  <div id="server-warning" class="server-warning" role="alert">
+    <div>
+      <strong>Le site n'est pas lancé.</strong>
+      Cette page a été ouverte directement depuis le fichier, ou le serveur est arrêté : le bouton ne peut pas fonctionner.
+      Double-cliquez sur <code>start.bat</code> dans le dossier du site, puis utilisez la page qui s'ouvre.
+    </div>
+    <a class="primary" href="http://localhost:8080/">Ouvrir http://localhost:8080</a>
+  </div>
+  <script>
+    (function () {
+      var w = document.getElementById('server-warning');
+      var ok = function () { w.parentNode && w.parentNode.removeChild(w); };
+      if (location.protocol !== 'http:' && location.protocol !== 'https:') return;
+      fetch('/api/status?id=0', { cache: 'no-store' })
+        .then(function (r) { return r.json(); })
+        .then(function (d) { if (d && d.status) ok(); })
+        .catch(function () {});
+    })();
+  </script>
+  <header class="nav">
+    <a class="brand" href="index.html">
+      <img class="logo" src="img/logo.svg" alt="">
+      <div>
+        <h1>Visualisation Skin Gmod</h1>
+      </div>
+    </a>
+    <nav>
+      <a href="#fonctions">Fonctions</a>
+      <a href="#etapes">Comment ça marche</a>
+      <a class="nav-cta" href="viewer.html"><span class="cta-long">Ouvrir la visionneuse</span><span class="cta-short">Visionneuse</span></a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero">
+      <p class="eyebrow">Garry's Mod · Steam Workshop</p>
+      <h2>Voyez vos skins Gmod en 3D <br>avant de les installer.</h2>
+      <p class="lead">Collez le lien d'un addon du Workshop : le site affiche ses models avec leurs textures, et vous permet de tester chaque bodygroup et chaque skin.</p>
+      <form id="home-form" class="addon-form hero-form" autocomplete="off">
+        <input id="home-url" type="text" placeholder="https://steamcommunity.com/sharedfiles/filedetails/?id=..." required>
+        <button class="primary" type="submit">Voir les models</button>
+      </form>
+      <p class="muted small">Un lien d'addon, un lien de collection ou simplement l'ID du Workshop.</p>
+    </section>
+
+    <section id="fonctions" class="features">
+      <article class="card">
+        <div class="card-icon">◆</div>
+        <h3>Aperçu 3D texturé</h3>
+        <p>Les models de l'addon sont reconstruits avec leurs matériaux : textures, transparence, yeux.</p>
+      </article>
+      <article class="card">
+        <div class="card-icon">☰</div>
+        <h3>Bodygroups et skins</h3>
+        <p>Activez ou retirez chaque partie (chapeau, masque, accessoires…) et passez d'un skin à l'autre.</p>
+      </article>
+      <article class="card">
+        <div class="card-icon">⤓</div>
+        <h3>Rien n'est conservé</h3>
+        <p>L'addon est récupéré depuis le Workshop, envoyé à votre navigateur puis supprimé du serveur.</p>
+      </article>
+    </section>
+
+    <section id="etapes" class="steps">
+      <h2>Comment ça marche</h2>
+      <ol>
+        <li><span>1</span><div><h3>Copiez le lien</h3><p>Sur la page Workshop de l'addon, copiez l'adresse (ou l'ID).</p></div></li>
+        <li><span>2</span><div><h3>Collez-le ici</h3><p>Cliquez sur « Voir les models ». Le téléchargement prend quelques secondes.</p></div></li>
+        <li><span>3</span><div><h3>Explorez</h3><p>Choisissez un model, tournez autour, zoomez, déplacez-le et testez ses bodygroups.</p></div></li>
+      </ol>
+    </section>
+  </main>
+
+  <footer class="footer">
+    Visualisation Skin Gmod · projet non affilié à Valve ni à Facepunch Studios.
+  </footer>
+
+  <script>
+    document.getElementById('home-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const url = document.getElementById('home-url').value.trim();
+      const warning = document.getElementById('server-warning');
+      if (warning) {
+        // serveur non lancé : on montre l'avertissement au lieu d'ouvrir une page vide
+        warning.classList.remove('pulse');
+        void warning.offsetWidth;
+        warning.classList.add('pulse');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+      }
+      if (url) location.href = 'viewer.html?addon=' + encodeURIComponent(url);
+    });
+  </script>
+</body>
+</html>
