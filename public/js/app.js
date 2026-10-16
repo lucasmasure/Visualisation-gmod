@@ -153,6 +153,8 @@ async function loadAddon(url) {
       const where = be.kind === 'cloud' ? ' sur le serveur' : '';
       if (st.queued) {
         setStatus(`En attente : un autre addon est en cours de téléchargement… ${st.elapsed || 0} s`);
+      } else if (be.kind === 'cloud' && st.size && st.done >= st.size) {
+        setStatus(`Préparation de l'addon sur le serveur… ${st.elapsed || 0} s`);
       } else if (st.size && (st.method === 'http' || be.kind === 'cloud')) {
         const done = Math.min(st.done || 0, st.size);
         setStatus(`Téléchargement de l'addon${where}… ${mb(done)} / ${mb(st.size)}`, done / st.size);
