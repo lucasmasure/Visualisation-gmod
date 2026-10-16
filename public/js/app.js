@@ -302,6 +302,9 @@ form.addEventListener('submit', (e) => {
   loadAddon(url);
 });
 
+// les flèches servent à déplacer la vue, sauf pendant la saisie du lien
+input.addEventListener('keydown', (e) => e.stopPropagation());
+
 for (const b of document.querySelectorAll('[data-zoom]')) {
   b.addEventListener('click', () => viewer.zoom(parseFloat(b.dataset.zoom)));
 }

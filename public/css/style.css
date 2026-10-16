@@ -148,13 +148,67 @@ button:disabled { opacity: .5; cursor: default; }
 
 .missing { margin: 0; padding-left: 18px; color: var(--muted); font-size: 12px; word-break: break-all; }
 
+.hint-touch { display: none; }
+
+/* ---------- écrans tactiles ---------- */
+@media (pointer: coarse) {
+  .hint-mouse { display: none; }
+  .hint-touch { display: inline; }
+  .chip, .model-btn { min-height: 40px; }
+  .tool.icon { width: 40px; height: 40px; }
+  .pad-grid { grid-template-columns: repeat(3, 40px); }
+}
+@media (hover: none) {
+  button:hover { border-color: var(--border); }
+  .primary:hover { background: var(--accent); }
+  .chip.active:hover, .model-btn.active:hover { border-color: var(--accent); }
+}
+
+/* ---------- tablette ---------- */
+@media (max-width: 1200px) {
+  .layout { grid-template-columns: 230px 1fr 260px; }
+  .stage-hint { max-width: 45%; }
+}
+
+/* ---------- mobile : la vue 3D en haut, les panneaux en dessous ---------- */
 @media (max-width: 900px) {
-  body.app { height: auto; min-height: 100vh; }
-  .layout { grid-template-columns: 1fr; grid-template-rows: 65vh auto auto; }
-  #models-panel { border-right: 0; border-bottom: 1px solid var(--border); max-height: 40vh; }
+  body.app { height: auto; min-height: 100vh; display: block; }
+  .top { gap: 12px; padding: 12px 16px; }
+  .top .brand { flex: 1 1 auto; }
+  .addon-form { flex: 1 1 100%; min-width: 0; }
+
+  .layout { display: flex; flex-direction: column; }
+  .stage { order: -1; height: 62vh; height: 62svh; min-height: 320px; flex: none; }
+  .panel { overflow: visible; padding: 14px 16px; }
+  #models-panel { border-right: 0; border-bottom: 1px solid var(--border); }
   #options-panel { border-left: 0; }
-  .stage { order: -1; }
+
+  /* liste des models en bandeau horizontal */
+  #models-list.btn-list:has(.model-btn) {
+    flex-direction: row; overflow-x: auto; scroll-snap-type: x proximity;
+    margin: 0 -16px; padding: 0 16px 6px;
+  }
+  #models-list .model-btn { flex: 0 0 auto; width: min(220px, 70vw); scroll-snap-align: start; }
+
+  .stage-hint { top: auto; bottom: 58px; left: 14px; right: auto; text-align: left; max-width: 55%; }
+  .stage-title { max-width: calc(100% - 32px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+}
+
+@media (max-width: 600px) {
+  .brand p { display: none; }
+  .brand h1 { font-size: 16px; }
+  .logo { width: 32px; height: 32px; }
+  .primary { padding: 10px 14px; }
   .stage-hint { display: none; }
+  .cam-pad { right: 10px; bottom: 10px; gap: 6px; }
+  .stage-tools { left: 10px; bottom: 10px; }
+  .status { padding: 14px; gap: 10px; }
+  .progress { min-width: 0; }
+}
+
+/* téléphone à l'horizontale : la vue 3D prend presque tout l'écran */
+@media (max-width: 900px) and (orientation: landscape) and (max-height: 500px) {
+  .stage { height: 85vh; height: 85svh; min-height: 0; }
 }
 
 /* ---------- page d'accueil ---------- */
@@ -173,6 +227,7 @@ button:disabled { opacity: .5; cursor: default; }
   color: #fff; background: var(--accent); padding: 8px 14px; border-radius: 8px; font-weight: 600;
 }
 .nav nav a.nav-cta:hover { background: var(--accent-2); }
+.cta-short { display: none; }
 
 .hero {
   max-width: 820px; margin: 0 auto;
@@ -212,7 +267,23 @@ button:disabled { opacity: .5; cursor: default; }
 .footer { border-top: 1px solid var(--border); padding: 20px 16px; text-align: center; color: var(--muted); font-size: 12px; }
 
 @media (max-width: 600px) {
+  .nav { padding: 12px 16px; }
+  .nav nav a:not(.nav-cta) { display: none; }
+  .nav { flex-wrap: nowrap; gap: 10px; }
+  .nav .brand { gap: 8px; min-width: 0; }
+  .nav .brand h1 { font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .nav nav a.nav-cta { padding: 8px 12px; font-size: 13px; white-space: nowrap; }
+  .cta-long { display: none; }
+  .cta-short { display: inline; }
+  .hero { padding: 40px 16px 36px; }
+  .lead { font-size: 15px; }
   .hero-form { flex-direction: column; }
   .hero h2 br { display: none; }
-  .stage-hint { display: none; }
+  .features { padding-bottom: 40px; }
+  .card { padding: 18px; }
+  .steps { padding-bottom: 48px; }
+}
+@media (max-width: 380px) {
+  .nav .brand h1 { font-size: 14px; }
+  .nav .logo { width: 28px; height: 28px; }
 }
