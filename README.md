@@ -57,6 +57,13 @@ public/
     vtf.js         textures (.vtf)
 ```
 
+## Dépannage
+
+**Le bouton « Voir les models » ne fait rien / un bandeau rouge « Le site n'est pas lancé » apparaît**
+La page a été ouverte directement depuis le fichier (adresse en `file:///…`) ou le serveur est arrêté.
+Double-cliquez sur `start.bat` et utilisez la page qui s'ouvre : son adresse doit être http://localhost:8080/.
+Laissez la fenêtre noire ouverte tant que vous utilisez le site.
+
 ## Limites
 
 - Le site a besoin du serveur local : il ne fonctionne pas sur GitHub Pages seul, car Steam ne laisse pas un navigateur télécharger les addons directement.

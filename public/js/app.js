@@ -52,8 +52,11 @@ function hideStatus() { $('status').classList.add('hidden'); }
 
 // ---------------------------------------------------------------- addon
 
+const NO_SERVER = "Le serveur ne répond pas. Double-cliquez sur start.bat dans le dossier du site, puis rechargez la page.";
+
 async function api(url) {
-  const r = await fetch(url);
+  let r;
+  try { r = await fetch(url); } catch { throw new Error(NO_SERVER); }
   let data;
   try { data = await r.json(); } catch { throw new Error('Réponse invalide du serveur'); }
   if (data.error) {
@@ -130,8 +133,9 @@ async function loadAddon(url) {
 }
 
 async function downloadWithProgress(url, onProgress) {
-  const r = await fetch(url);
-  if (!r.ok) throw new Error('Impossible de récupérer le fichier de l\'addon');
+  let r;
+  try { r = await fetch(url); } catch { throw new Error(NO_SERVER); }
+  if (!r.ok) throw new Error("Impossible de récupérer le fichier de l'addon. Relancez « Voir les models ».");
   const total = Number(r.headers.get('content-length')) || 0;
   const out = total ? new Uint8Array(total) : null;
   const chunks = [];

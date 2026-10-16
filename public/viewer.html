@@ -16,6 +16,26 @@
   </script>
 </head>
 <body class="app">
+  <!-- Visible si le site n'est pas servi par start.bat (fichier ouvert directement ou serveur arrêté) -->
+  <div id="server-warning" class="server-warning" role="alert">
+    <div>
+      <strong>Le site n'est pas lancé.</strong>
+      Cette page a été ouverte directement depuis le fichier, ou le serveur est arrêté : le bouton ne peut pas fonctionner.
+      Double-cliquez sur <code>start.bat</code> dans le dossier du site, puis utilisez la page qui s'ouvre.
+    </div>
+    <a class="primary" href="http://localhost:8080/">Ouvrir http://localhost:8080</a>
+  </div>
+  <script>
+    (function () {
+      var w = document.getElementById('server-warning');
+      var ok = function () { w.parentNode && w.parentNode.removeChild(w); };
+      if (location.protocol !== 'http:' && location.protocol !== 'https:') return;
+      fetch('/api/status?id=0', { cache: 'no-store' })
+        .then(function (r) { return r.json(); })
+        .then(function (d) { if (d && d.status) ok(); })
+        .catch(function () {});
+    })();
+  </script>
   <header class="top">
     <a class="brand" href="index.html" title="Retour à l'accueil">
       <img class="logo" src="img/logo.svg" alt="">
